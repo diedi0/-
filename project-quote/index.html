@@ -1,0 +1,213 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>智联电子项目报价单系统</title>
+    <script src="https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/jspdf@2.5.1/dist/jspdf.umd.min.js"></script>
+    <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+
+<!-- ========== 编辑页面 ========== -->
+<div id="editorPage" class="page">
+    <div class="toolbar no-print">
+        <div class="toolbar-left">
+            <button onclick="app.showHistory()" class="btn btn-gray">☰ 历史单据</button>
+            <button onclick="app.newQuote()" class="btn btn-blue">+ 新建报价单</button>
+        </div>
+        <div class="toolbar-right">
+            <select id="pqColorScheme" onchange="colorScheme.apply()" class="color-select">
+                <option value="default">默认（紫蓝渐变）</option>
+                <optgroup label="纯色">
+                    <option value="solid-blue">纯色·蓝色</option>
+                    <option value="solid-green">纯色·绿色</option>
+                    <option value="solid-red">纯色·红色</option>
+                    <option value="solid-orange">纯色·橙色</option>
+                    <option value="solid-purple">纯色·紫色</option>
+                    <option value="solid-teal">纯色·青色</option>
+                    <option value="solid-pink">纯色·粉色</option>
+                    <option value="solid-indigo">纯色·靛蓝</option>
+                    <option value="solid-cyan">纯色·天蓝</option>
+                    <option value="solid-emerald">纯色·翠绿</option>
+                </optgroup>
+                <optgroup label="渐变色">
+                    <option value="gradient-blue">渐变·蓝青</option>
+                    <option value="gradient-green">渐变·绿青</option>
+                    <option value="gradient-red">渐变·红橙</option>
+                    <option value="gradient-purple">渐变·紫粉</option>
+                    <option value="gradient-orange">渐变·橙黄</option>
+                    <option value="gradient-teal">渐变·青蓝</option>
+                    <option value="gradient-indigo">渐变·靛紫</option>
+                    <option value="gradient-pink">渐变·粉紫</option>
+                    <option value="gradient-cyan">渐变·天蓝绿</option>
+                    <option value="gradient-warm">渐变·暖橙</option>
+                </optgroup>
+            </select>
+            <button onclick="preview.open()" class="btn btn-gray">预览</button>
+            <button onclick="exportFunc.printQuote()" class="btn btn-indigo">打印</button>
+            <button onclick="exportFunc.exportPDF()" class="btn btn-red">导出PDF</button>
+            <button onclick="exportFunc.exportPNG()" class="btn btn-purple">导出PNG</button>
+            <button onclick="app.save()" class="btn btn-blue">保存单据</button>
+            <button onclick="app.showBackup()" class="btn btn-gray">备份/恢复</button>
+        </div>
+    </div>
+
+    <!-- 报价单内容区（A4横向） -->
+    <div class="quote-container">
+        <div id="quotePaper" class="quote-paper">
+            <!-- 标题 -->
+            <div class="quote-header">
+                <h1 id="pqTitle" class="quote-title" contenteditable="true">智联电子项目报价单</h1>
+                <div class="quote-company">
+                    <span>报价单位：<span id="pqCompany" contenteditable="true">智联电子</span></span>
+                    <span>电话：<span id="pqPhone" contenteditable="true">13614335222</span></span>
+                </div>
+            </div>
+
+            <!-- 客户信息 -->
+            <div class="info-row">
+                <div class="info-cell">
+                    <label>客户名称：</label>
+                    <input type="text" id="pqCustomerName" placeholder="输入客户名称">
+                </div>
+                <div class="info-cell info-cell-sm">
+                    <label>联系电话：</label>
+                    <input type="text" id="pqCustomerPhone" placeholder="电话">
+                </div>
+                <div class="info-cell info-cell-sm">
+                    <label>报价日期：</label>
+                    <input type="date" id="pqDate">
+                </div>
+                <div class="info-cell info-cell-sm">
+                    <label>单据编号：</label>
+                    <input type="text" id="pqOrderNo" readonly>
+                </div>
+            </div>
+
+            <!-- 项目说明 -->
+            <div class="info-row">
+                <label class="info-label">项目说明：</label>
+                <textarea id="pqProjectDesc" placeholder="填写项目说明、需求描述等"></textarea>
+            </div>
+
+            <!-- 类目区域 -->
+            <div id="pqCategoryList"></div>
+
+            <div class="add-category-row">
+                <button onclick="categories.add()" class="btn btn-purple btn-sm">+ 新增类目</button>
+            </div>
+
+            <!-- 汇总区域 -->
+            <div class="summary-area">
+                <div class="info-row">
+                    <label class="info-label">整单备注：</label>
+                    <textarea id="pqOrderRemark" placeholder="填写整单备注信息"></textarea>
+                </div>
+                <div class="total-area">
+                    <div class="total-line">
+                        <span>总金额（未税）：</span>
+                        <span id="pqTotalAmount" class="total-amount">¥0.00</span>
+                    </div>
+                    <div class="total-line">
+                        <button onclick="calc.calcTax()" class="btn btn-green btn-xs">含税</button>
+                        <label>税率(%)：</label>
+                        <input type="number" id="pqTaxRate" value="13" min="0" max="100" step="0.01" class="tax-rate-input">
+                        <span>含税金额：</span>
+                        <input type="text" id="pqTaxAmount" class="tax-amount-input" placeholder="点击含税按钮计算" readonly>
+                    </div>
+                    <div class="quote-note">
+                        <label>报价说明：</label>
+                        <input type="text" id="pqQuoteNote" value="报价有效期15天，最终解释权归智联电子所有">
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- ========== 历史单据页面 ========== -->
+<div id="historyPage" class="page hidden">
+    <div class="toolbar no-print">
+        <div class="toolbar-left">
+            <button onclick="app.showEditor()" class="btn btn-gray">← 返回编辑</button>
+            <button onclick="app.newQuote()" class="btn btn-blue">+ 新建报价单</button>
+        </div>
+        <div class="toolbar-right">
+            <input type="text" id="historySearch" onkeyup="historyList.render()" placeholder="搜索客户名称/单据编号/日期" class="search-input">
+            <button onclick="app.showBackup()" class="btn btn-gray">备份/恢复</button>
+        </div>
+    </div>
+    <div class="history-container">
+        <h2 class="history-title">历史项目报价单 <span id="historyCount" class="history-count"></span></h2>
+        <div id="historyList" class="history-list"></div>
+        <div id="historyEmpty" class="empty-state hidden">暂无历史报价单，点击「新建报价单」开始创建</div>
+    </div>
+</div>
+
+<!-- ========== 备份/恢复弹窗 ========== -->
+<div id="backupModal" class="modal hidden">
+    <div class="modal-box">
+        <div class="modal-header">
+            <h3>数据备份与恢复</h3>
+            <button onclick="app.closeBackup()" class="modal-close">×</button>
+        </div>
+        <div class="modal-body">
+            <div class="backup-section">
+                <h4>导出备份</h4>
+                <p class="backup-desc">将全部项目报价单导出为 JSON 备份文件，保存到本地电脑。</p>
+                <button onclick="storage.exportBackup()" class="btn btn-blue">导出 JSON 备份</button>
+            </div>
+            <div class="backup-section">
+                <h4>导入恢复</h4>
+                <p class="backup-desc">选择之前导出的备份文件进行恢复。导入将<b>覆盖</b>当前所有数据，请谨慎操作。</p>
+                <input type="file" id="backupFileInput" accept=".json" style="display:none;" onchange="storage.importBackup(event)">
+                <button onclick="document.getElementById('backupFileInput').click()" class="btn btn-green">选择备份文件导入</button>
+            </div>
+            <div class="backup-section">
+                <h4>后端同步（异地可取）</h4>
+                <p class="backup-desc">登录销售开单系统账号后，报价单会同时保存到服务器数据库；换电脑登录同一账号即可拉取。未登录时仍使用本机缓存。</p>
+                <div id="syncBox">
+                    <input id="syncUser" class="sync-input" placeholder="系统账号" value="admin">
+                    <input id="syncPwd" class="sync-input" type="password" placeholder="系统密码">
+                    <div class="sync-actions">
+                        <button onclick="storage.syncLogin()" class="btn btn-blue">连接并同步</button>
+                        <button onclick="storage.syncNow()" class="btn btn-gray">立即拉取</button>
+                    </div>
+                    <div id="syncStatus" class="sync-status">未连接后端</div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- ========== 预览弹窗 ========== -->
+<div id="previewModal" class="modal hidden">
+    <div class="preview-toolbar no-print">
+        <button onclick="window.print()" class="btn btn-indigo">🖨️ 打印 / 另存为PDF</button>
+        <button onclick="exportFunc.exportPDF()" class="btn btn-red">导出PDF</button>
+        <button onclick="exportFunc.exportPNG()" class="btn btn-purple">导出PNG</button>
+        <button onclick="preview.close()" class="btn btn-gray">关闭预览</button>
+    </div>
+    <div class="preview-content-wrap">
+        <div id="previewContent" class="preview-content"></div>
+    </div>
+</div>
+
+<!-- ========== Toast 提示 ========== -->
+<div id="toast" class="toast hidden"></div>
+
+<!-- ========== 脚本 ========== -->
+<script src="js/quote-storage.js"></script>
+<script src="js/quote-color.js"></script>
+<script src="js/quote-calculation.js"></script>
+<script src="js/quote-categories.js"></script>
+<script src="js/quote-data.js"></script>
+<script src="js/quote-preview.js"></script>
+<script src="js/quote-export.js"></script>
+<script src="js/quote-history.js"></script>
+<script src="js/app.js"></script>
+
+</body>
+</html>
